@@ -1,0 +1,37 @@
+name: "Debug Load Balancer"
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  EKS_CLUSTER: vprofile-eks
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get EKS cluster name and connect
+        run: |
+          NAME=$(aws eks list-clusters --region $AWS_REGION --query "clusters[?starts_with(@, '$EKS_CLUSTER')] | [0]" --output text)
+          aws eks update-kubeconfig --region $AWS_REGION --name $NAME
+
+      - name: Ask Kubernetes what went wrong
+        run: |
+          echo "=== INGRESS RESOURCE EVENTS ==="
+          kubectl describe ingress vproapp-ingress
+          echo ""
+          echo "=== NGINX CONTROLLER LOGS (Why did AWS reject the Load Balancer?) ==="
+          kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=50
