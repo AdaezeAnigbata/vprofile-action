@@ -28,10 +28,10 @@ jobs:
           NAME=$(aws eks list-clusters --region $AWS_REGION --query "clusters[?starts_with(@, '$EKS_CLUSTER')] | [0]" --output text)
           aws eks update-kubeconfig --region $AWS_REGION --name $NAME
 
-      - name: Ask Kubernetes what went wrong
+      - name: Ask the NGINX Service what AWS said
         run: |
-          echo "=== INGRESS RESOURCE EVENTS ==="
-          kubectl describe ingress vproapp-ingress
+          echo "=== NGINX SERVICE STATUS ==="
+          kubectl get svc -n ingress-nginx ingress-nginx-controller
           echo ""
-          echo "=== NGINX CONTROLLER LOGS (Why did AWS reject the Load Balancer?) ==="
-          kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=50
+          echo "=== AWS ERROR MESSAGES ==="
+          kubectl describe svc -n ingress-nginx ingress-nginx-controller
